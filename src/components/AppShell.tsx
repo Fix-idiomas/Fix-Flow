@@ -86,6 +86,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+{/* Topbar (desktop) */}
+      <header className="hidden md:flex items-center justify-end border-b bg-white px-4 h-14">
+        <div className="flex items-center gap-3">
+          <div className="leading-tight">
+            <div className="text-sm font-semibold">Fix Flow - Sua jornada de estudos</div>
+          </div>
+          <button
+            type="button"
+            aria-label="Perfil"
+            title="Perfil"
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+          >
+            <span className="hidden lg:inline text-slate-700">Perfil</span>
+            <div className="h-6 w-6 rounded-full bg-slate-200" />
+          </button>
+        </div>
+      </header>
+
       {/* Overlay (mobile) */}
       {openMobile && (
         <button
@@ -143,7 +161,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navegação */}
-        <nav className="px-2 py-3">
+        <nav className="px-2 py-3" role="navigation" aria-label="Navegação principal">
           <ul className="space-y-1">
             {NAV.map(({ href, label, Icon }) => (
               <li key={href}>
@@ -152,14 +170,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setOpenMobile(false)}
                   aria-current={isActive(href) ? "page" : undefined}
                   className={[
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    isActive(href) ? "bg-slate-900 text-white" : "hover:bg-slate-100",
-                  ].join(" ")}
+                    "group/link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+                    "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+                  isActive(href)
+                ? "bg-slate-900 text-white shadow-sm"
+                 : "text-slate-700 hover:bg-slate-100"
+                ].join(" ")}
                   title={!pinned ? label : undefined} // tooltip nativo quando em rail
                 >
                   <Icon
                     size={18}
-                    className={isActive(href) ? "text-white" : "text-slate-600"}
+                    className={
+                      isActive(href) ? "text-white" : "text-slate-500 group-hover/link:text-slate-800"
+                    }
                   />
                   {/* Rótulo:
                       - se pinned: sempre visível
@@ -182,7 +205,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Conteúdo — compensa a largura do rail (16) ou expandido (64) */}
-      <main className={`${mainPadDesktop}`}>{children}</main>
+      <main className={`${mainPadDesktop} px-4 py-4`}>{children}</main>
     </div>
   );
 }

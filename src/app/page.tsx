@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CalendarCheck, Sparkles, ChevronRight, BarChart3 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import {
@@ -186,7 +187,54 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-50 text-slate-800">
-  <div className="mx-auto max-w-md px-4 py-10">
+  <div className="mx-auto max-w-5xl px-4 py-10">
+        {/* Header + Cards de entrada */}
+       <header className="mb-6">
+          <h1 className="text-2xl font-semibold text-slate-900">Bem-vindo 👋</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Escolha por onde começar. É rápido e guiado.
+          </p>
+        </header>
+
+        <section className="mb-8 grid gap-4 md:grid-cols-2">
+          {/* Card — Atividade do dia */}
+          <Link
+            href="/atividade"
+            className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white transition group-hover:scale-105">
+                <CalendarCheck size={20} />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Atividade do dia</h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              Faça o desafio publicado hoje (global ou do seu professor).
+            </p>
+            <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700">
+              Começar <ChevronRight size={16} />
+            </div>
+          </Link>
+
+          {/* Card — Meu Progresso / primeira atividade guiada */}
+          <Link
+            href="/start"
+            className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white transition group-hover:scale-105">
+                <Sparkles size={20} />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Meu Progresso</h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              Escolha uma primeira atividade (palavra, pronúncia ou ouvir) e ganhe pontos.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700">
+              Abrir <ChevronRight size={16} />
+            </div>
+          </Link>
+        </section>
    
         {/* Card de conexão */}
         <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -343,7 +391,16 @@ export default function Home() {
             )}
           </div>
         </section>
-
+{/* Teaser do ranking */}
+        <div className="mt-8">
+          <Link
+            href="/leaderboard"
+            className="inline-flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-gray-50"
+          >
+            <BarChart3 size={16} />
+            Ver ranking
+          </Link>
+        </div>
         {/* Rodapé */}
         <footer className="mt-8 text-center text-xs text-slate-400">
           v0.1 — Patch Firestore smoke-test (somente front)
