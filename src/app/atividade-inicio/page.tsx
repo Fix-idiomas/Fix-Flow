@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
-import FirstRunClient from "./FirstRunClient";
+import FirstRunClient from "@/app/atividade-inicio/FirstRunClient";
 
 export default function FirstRunPage() {
   return (
