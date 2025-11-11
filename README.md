@@ -102,6 +102,11 @@ Supabase (legado):
 - LEGACY_DB_URL ou credenciais de conexão (somente leitura)  
 - LEGACY_DB_READONLY_USER / LEGACY_DB_READONLY_PASSWORD
 
+Gemini (IA):
+- GEMINI_API_KEY (obrigatório)
+- GEMINI_MODEL_DEFAULT=gemini-2.5-flash (opcional)
+- GEMINI_MODEL_COMPLEX=gemini-2.5-pro (opcional)
+
 ## Deploy (Vercel recomendado)
 1) Conectar o repositório ao Vercel.  
 2) Em Project Settings → Environment Variables (Production/Preview):
@@ -113,6 +118,48 @@ Supabase (legado):
 	- Observação: este endpoint valida apenas o ambiente serverless. Para testar conexão/regras do Firebase no cliente, use os helpers `tryWriteHealthPing`/`tryReadHealthPing`.
 
 Observação Next: se houver aviso de múltiplos lockfiles, remova o lockfile fora da pasta do projeto ou configure `outputFileTracingRoot`.
+
+## IA (Gemini) — análise de atividades
+
+- Endpoint: `POST /api/ai/analyze`
+- Uso: avalia uma resposta curta do aluno com base em critérios simples e retorna pontuação por critério, comentário e sugestão de melhoria.
+- Modelos: por padrão usa família 2.5 (flash -> barato/rápido, pro -> mais capaz). O serviço normaliza nomes (remove `models/` e mapeia família 1.5 para 2.5).
+
+Body (JSON):
+```json
+{
+	"task": "enunciado da atividade",
+	"submission": "resposta do aluno",
+	"criteria": ["clareza", "vocabulário", "gramática"],
+	"mode": "auto|flash|pro",
+	"premium": false
+}
+```
+
+Notas:
+- `mode`:
+	- `flash`: força o modelo rápido (gemini-2.5-flash)
+	- `pro`: força o modelo mais capaz (gemini-2.5-pro)
+	- `auto` (padrão): escolhe com base no tamanho/complexidade ou `premium=true`
+- Timeout: ~18s (com fallback curto). Em timeout retorna 504 com `{ error, timeout: true }`.
+- Robustez: tenta parsear JSON do modelo; se falhar, entrega um fallback neutro para não quebrar a UX.
+
+Resposta (exemplo simplificado):
+```json
+{
+	"scores": { "clareza": 8.5, "vocabulário": 8.0, "gramática": 9.0 },
+	"overallComment": "comentário breve",
+	"improvementSuggestion": "sugestão breve",
+	"confidence": 0.7,
+	"modelUsed": "gemini-2.5-flash",
+	"escalated": false,
+	"rawTokensApprox": 420
+}
+```
+
+Diagnóstico:
+- `GET /api/ai/status` — verifica presença de chave e modelos default configurados
+- `GET /api/ai/models` — lista modelos disponíveis (API v1)
 
 ## Páginas do MVP
 - `/atividade-inicio` — primeira tentativa guiada (+50 pontos UX)  
