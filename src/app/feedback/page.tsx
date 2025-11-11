@@ -44,7 +44,13 @@ export default function FeedbackPage() {
       setDone(true);
       setText("");
     } catch (e: any) {
-      alert(e?.message || "Falha ao enviar feedback");
+      const msg = e?.message || "Falha ao enviar feedback";
+      // Captura específica de erro de permissão para orientar o deploy das regras
+      if (msg.toLowerCase().includes("missing or insufficient permissions")) {
+        alert("Permissão negada. Verifique se as regras Firestore foram publicadas (firebase deploy --only firestore) e se o usuário anônimo está autenticado.");
+      } else {
+        alert(msg);
+      }
     } finally {
       setSubmitting(false);
     }
