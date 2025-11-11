@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 // Simple runtime guard (executa apenas no server)
 export const dynamic = "force-dynamic"; // sempre server-side
+export const runtime = "nodejs"; // garante Node runtime no Vercel
 
 // Environment variables (configure em Vercel e .env.local)
 const API_KEY = process.env.GEMINI_API_KEY;
