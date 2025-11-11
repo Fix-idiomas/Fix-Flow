@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
+// Força o root correto para file tracing (evita Next inferir C:\Users\bruno como raíz)
+// Remova o lockfile externo (C:\Users\bruno\package-lock.json) para que o warning suma totalmente.
+// Isso ajuda Vercel a incluir corretamente funções API como /api/ai/analyze.
 const nextConfig: NextConfig = {
-  // (Nota) Se o warning de workspace root persistir em produção, ajustar removendo lockfile extra ou adicionar config específica quando Next expor opção estável.
+  outputFileTracingRoot: __dirname,
 };
 
 export default nextConfig;
