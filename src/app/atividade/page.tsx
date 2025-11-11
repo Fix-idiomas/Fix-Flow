@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { paths } from "@/lib/firestore";
+import { attemptRecordConverter, taskItemConverter } from "@/lib/firestore/converters";
 
 type DailyActivityCurrent = {
   templateRef?: { id?: string };
@@ -34,6 +35,12 @@ export default function ActivityRunnerPage() {
   const [data, setData] = useState<DailyActivityCurrent | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Estado para criar tarefa quando não há atividade publicada
+  const [showHWForm, setShowHWForm] = useState(false);
+  const [hwText, setHwText] = useState("");
+  const [hwWhen, setHwWhen] = useState<string>("");
+  const [hwBusy, setHwBusy] = useState(false);
 
   const currentPath = useMemo(() => paths.dailyActivityCurrent(APP_ID), []);
 
@@ -79,6 +86,34 @@ export default function ActivityRunnerPage() {
 
   const templateId = data?.templateRef?.id || null;
 
+  // Criar tarefa rápida (homework) quando não há atividade do dia
+  async function handleAddHomework() {
+    if (!uid || !hwText.trim()) return;
+    setHwBusy(true);
+    try {
+      const tasksColPath = paths.userTasksCol(APP_ID, uid);
+      const remindAt = hwWhen ? Timestamp.fromDate(new Date(hwWhen)) : null;
+      await addDoc(
+        collection(db, tasksColPath).withConverter(taskItemConverter),
+        {
+          text: hwText.trim(),
+          completed: false,
+          remindAt: remindAt ?? undefined,
+          dueAt: remindAt ?? undefined,
+          source: "atividade-empty",
+        }
+      );
+      setHwText("");
+      setHwWhen("");
+      setShowHWForm(false);
+    } catch (e: any) {
+      console.error("addHomework:", e?.message || e);
+      alert("Falha ao adicionar tarefa");
+    } finally {
+      setHwBusy(false);
+    }
+  }
+
   // ---- Ação “Concluir” (placeholder): cria attempt + soma pontos ----
   async function handleComplete() {
     if (!uid || !templateId) return;
@@ -86,15 +121,14 @@ export default function ActivityRunnerPage() {
     try {
       // 1) attempt (placeholder)
       const attemptsColPath = paths.userAttemptsCol(APP_ID, uid);
-      await addDoc(collection(db, attemptsColPath), {
-        templateId,
-        startedAt: serverTimestamp(),
-        // Em MVP não há start real; salvamos ambos:
-        submittedAt: serverTimestamp(),
-        completedAt: serverTimestamp(),
-        payload: { placeholder: true }, // sem respostas por enquanto
-        pointsAwarded: DEFAULT_POINTS_ON_COMPLETE,
-      });
+      await addDoc(
+        collection(db, attemptsColPath).withConverter(attemptRecordConverter),
+        {
+          templateId,
+          payload: { placeholder: true },
+          pointsAwarded: DEFAULT_POINTS_ON_COMPLETE,
+        }
+      );
 
       // 2) profile points (+DEFAULT_POINTS_ON_COMPLETE)
       const profilesColPath = paths.publicProfilesCol(APP_ID);
@@ -130,8 +164,57 @@ export default function ActivityRunnerPage() {
   function PlaceholderBody() {
     if (!templateId) {
       return (
-        <div className="rounded-lg border p-4 text-sm text-gray-700">
-          Nenhuma atividade publicada hoje.
+        <div className="rounded-2xl border p-5 text-sm text-gray-700 bg-white">
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarCheck className="h-5 w-5 text-slate-900" />
+            <div className="text-base font-semibold text-slate-900">
+              Ainda não há atividade publicada hoje
+            </div>
+          </div>
+          <p className="mb-4 text-slate-600">
+            Você pode explorar atividades ou agendar um “homework”.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="/start"
+              className="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:opacity-95"
+            >
+              Explorar atividades guiadas
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowHWForm(v => !v)}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              Agendar tarefa
+            </button>
+          </div>
+          {showHWForm && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <input
+                className="sm:col-span-2 rounded-md border px-3 py-2 text-sm"
+                placeholder="Ex.: Revisar vocabulário da aula"
+                value={hwText}
+                onChange={e => setHwText(e.target.value)}
+              />
+              <input
+                type="datetime-local"
+                className="rounded-md border px-3 py-2 text-sm"
+                value={hwWhen}
+                onChange={e => setHwWhen(e.target.value)}
+              />
+              <div className="sm:col-span-3">
+                <button
+                  type="button"
+                  onClick={handleAddHomework}
+                  disabled={hwBusy || !uid || !hwText.trim()}
+                  className="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:opacity-95 disabled:opacity-60"
+                >
+                  {hwBusy ? "Salvando…" : "Salvar tarefa"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

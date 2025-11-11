@@ -13,6 +13,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { publicProfileConverter } from "./firestore/converters";
 
 /**
  * Escreve um “ping” de saúde em:
@@ -74,24 +75,23 @@ export async function upsertPublicProfile(
   points: number
 ): Promise<void> {
   const safeAppId = encodeURIComponent(appId);
-  const ref = doc(
+  const col = collection(
     db,
     "artifacts",
     safeAppId,
     "public",
     "data",
-    "public_profiles",
-    uid
+    "public_profiles"
+  ).withConverter(publicProfileConverter);
+  const ref = doc(col, uid);
+  await setDoc(
+    ref,
+    {
+      displayName: (displayName || "Aluno").toString().slice(0, 80),
+      points: Math.max(0, Number.isFinite(points) ? Math.floor(points) : 0),
+    },
+    { merge: true }
   );
-
-  // Sanitização simples
-  const cleaned = {
-    displayName: (displayName || "Aluno").toString().slice(0, 80),
-    points: Math.max(0, Number.isFinite(points) ? Math.floor(points) : 0),
-    updatedAt: serverTimestamp(), // opcional; regra não exige
-  };
-
-  await setDoc(ref, cleaned, { merge: true });
 }
 
 /**
@@ -110,17 +110,12 @@ export async function getTopPublicProfiles(
     "public",
     "data",
     "public_profiles"
-  );
+  ).withConverter(publicProfileConverter);
   const q = query(colRef, orderBy("points", "desc"), qLimit(topN));
   const snap = await getDocs(q);
-
   return snap.docs.map((d) => {
-    const data = d.data() as any;
-    return {
-      id: d.id,
-      displayName: typeof data?.displayName === "string" ? data.displayName : "Aluno",
-      points: typeof data?.points === "number" ? data.points : 0,
-    };
+    const p = d.data();
+    return { id: d.id, displayName: p.displayName, points: p.points };
   });
 }
 
@@ -168,5 +163,30 @@ export const paths = {
   publicProfilesCol(appId: string) {
     const safeAppId = encodeURIComponent(appId);
     return `artifacts/${safeAppId}/public/data/public_profiles`;
+  },
+  /**
+   * Documento de perfil público do usuário.
+   * Ex.: artifacts/{APP_ID}/public/data/public_profiles/{uid}
+   */
+  publicProfileDoc(appId: string, uid: string) {
+    const safeAppId = encodeURIComponent(appId);
+    return `artifacts/${safeAppId}/public/data/public_profiles/${uid}`;
+  },
+
+  /**
+   * Tarefas do usuário (subcoleção sob doc "app").
+   * Ex.: artifacts/{APP_ID}/users/{uid}/data/app/tasks
+   */
+  userTasksCol(appId: string, uid: string) {
+    const safeAppId = encodeURIComponent(appId);
+    return `artifacts/${safeAppId}/users/${uid}/data/app/tasks`;
+  },
+  /**
+   * Documento de tentativa específica do usuário.
+   * Ex.: artifacts/{APP_ID}/users/{uid}/data/app/attempts/{attemptId}
+   */
+  userAttemptDoc(appId: string, uid: string, attemptId: string) {
+    const safeAppId = encodeURIComponent(appId);
+    return `artifacts/${safeAppId}/users/${uid}/data/app/attempts/${attemptId}`;
   },
 };

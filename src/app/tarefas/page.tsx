@@ -14,17 +14,12 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
 import { ListChecks, Plus, Trash2 } from "lucide-react";
+import { taskItemConverter, type TaskItem } from "@/lib/firestore/converters";
 
-type Task = {
-  id: string;
-  text: string;
-  completed: boolean;
-  createdAt?: any;
-};
+type Task = TaskItem & { id: string };
 
 export default function TasksPage() {
   const [uid, setUid] = useState<string | null>(null);
@@ -47,7 +42,7 @@ export default function TasksPage() {
       "data",
       "app",
       "tasks"
-    );
+    ).withConverter(taskItemConverter);
   }, [uid]);
 
   // auth + listener das tarefas
@@ -77,10 +72,7 @@ export default function TasksPage() {
     const stop = onSnapshot(
       q,
       (snap) => {
-        const rows: Task[] = snap.docs.map((d) => {
-          const data = d.data() as Omit<Task, "id">;
-          return { id: d.id, text: data.text, completed: !!data.completed, createdAt: data.createdAt };
-        });
+        const rows: Task[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setTasks(rows);
       },
       (err) => {
@@ -100,7 +92,6 @@ export default function TasksPage() {
       await addDoc(tasksPath, {
         text,
         completed: false,
-        createdAt: serverTimestamp(),
       });
       setInput("");
     } catch (e: any) {
@@ -115,11 +106,10 @@ export default function TasksPage() {
 
   async function toggleTask(task: Task) {
     if (!uid) return;
+    if (!tasksPath) return;
     try {
-      await updateDoc(
-        doc(db, "artifacts", APP_ID, "users", uid, "data", "app", "tasks", task.id),
-        { completed: !task.completed }
-      );
+      const ref = doc(tasksPath, task.id);
+      await updateDoc(ref, { completed: !task.completed });
     } catch (e: any) {
       console.error("Erro ao marcar tarefa:", e?.message || e);
       alert(
@@ -133,10 +123,10 @@ export default function TasksPage() {
   async function removeTask(task: Task) {
     if (!uid) return;
     if (!confirm("Apagar essa tarefa?")) return;
+    if (!tasksPath) return;
     try {
-      await deleteDoc(
-        doc(db, "artifacts", APP_ID, "users", uid, "data", "app", "tasks", task.id)
-      );
+      const ref = doc(tasksPath, task.id);
+      await deleteDoc(ref);
     } catch (e: any) {
       console.error("Erro ao apagar tarefa:", e?.message || e);
       alert(
