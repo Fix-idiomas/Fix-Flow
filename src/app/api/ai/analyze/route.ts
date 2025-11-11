@@ -7,8 +7,9 @@ export const runtime = "nodejs"; // garante Node runtime no Vercel
 // Environment variables (configure em Vercel e .env.local)
 const API_KEY = process.env.GEMINI_API_KEY;
 // Alguns ambientes não aceitam sufixo -latest no v1beta. Fallback para nomes base.
-const DEFAULT_MODEL = process.env.GEMINI_MODEL_DEFAULT || "gemini-1.5-flash";
-const COMPLEX_MODEL = process.env.GEMINI_MODEL_COMPLEX || "gemini-1.5-pro";
+// Defaults atualizados para a família 2.5
+const DEFAULT_MODEL = process.env.GEMINI_MODEL_DEFAULT || "gemini-2.5-flash";
+const COMPLEX_MODEL = process.env.GEMINI_MODEL_COMPLEX || "gemini-2.5-pro";
 
 // Timeout helper
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -82,14 +83,26 @@ interface GeminiCandidate {
 interface GeminiResponse { candidates?: GeminiCandidate[] }
 
 function normalizeModel(model: string): string {
-  // Remove sufixos -latest se presentes (que podem disparar 404 em alguns projetos)
-  return model.replace(/-latest$/i, "");
+  if (!model) return "gemini-2.5-flash";
+  const raw = model.trim();
+  const lower = raw.toLowerCase();
+  // Remover prefixo "models/" caso o usuário copie do ListModels
+  let out = lower.replace(/^models\//, "");
+  // Mapear família 1.5 -> 2.5 estáveis
+  if (out.includes("1.5-flash")) return "gemini-2.5-flash";
+  if (out.includes("1.5-pro")) return "gemini-2.5-pro";
+  // Preservar sufixo -latest apenas para gemini-(flash|pro)-latest, que existem no v1
+  if (out === "gemini-flash-latest" || out === "gemini-pro-latest") return out;
+  // Para demais casos, remover -latest genérico e retornar
+  out = out.replace(/-latest$/i, "");
+  return out;
 }
 
 async function callGemini(model: string, prompt: string): Promise<string> {
   model = normalizeModel(model);
   if (!API_KEY) throw new Error("GEMINI_API_KEY ausente");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+  // Use API v1 (alguns modelos não estão disponíveis no v1beta)
+  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${API_KEY}`;
   const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.2, topP: 0.9 },
@@ -121,7 +134,7 @@ export async function POST(req: Request) {
     const body = validation.data;
 
     // Estratégia de escalonamento
-    let chosen = DEFAULT_MODEL;
+  let chosen = DEFAULT_MODEL;
     let escalated = false;
     if (body.mode === "pro") { chosen = COMPLEX_MODEL; escalated = true; }
     else if (body.mode === "flash") { chosen = DEFAULT_MODEL; }
@@ -134,14 +147,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Config faltando (GEMINI_API_KEY)", modelUsed: chosen }, { status: 503 });
     }
 
-    const prompt = buildPrompt(body, chosen);
-    let modelRaw = await withTimeout(callGemini(chosen, prompt), 18_000).catch(async e => {
-      // Se deu 404 no modelo, tenta fallback sem sufixos
-      if (String(e.message).includes("404") && /gemini-1\.5/.test(chosen)) {
-        const base = normalizeModel(chosen);
-        if (base !== chosen) {
-          const retryPrompt = prompt.replace(chosen, base);
-          return withTimeout(callGemini(base, retryPrompt), 8_000); // segunda tentativa mais curta
+    const chosenNormalized = normalizeModel(chosen);
+    const prompt = buildPrompt(body, chosenNormalized);
+    let modelRaw = await withTimeout(callGemini(chosenNormalized, prompt), 18_000).catch(async e => {
+      // Se deu 404 no modelo, faz última tentativa trocando para gemini-2.5-flash
+      if (String(e.message).includes("404")) {
+        const fallbackModel = chosenNormalized.includes("pro") ? "gemini-2.5-pro" : "gemini-2.5-flash";
+        if (fallbackModel !== chosenNormalized) {
+          const retryPrompt = buildPrompt(body, fallbackModel);
+          return withTimeout(callGemini(fallbackModel, retryPrompt), 8_000);
         }
       }
       throw e;
@@ -156,7 +170,7 @@ export async function POST(req: Request) {
         overallComment: "Não foi possível estruturar totalmente a análise — fallback neutro.",
         improvementSuggestion: "Tente novamente mais tarde para análise detalhada.",
         confidence: 0.2,
-        modelUsed: chosen,
+        modelUsed: chosenNormalized,
         escalated,
         rawTokensApprox: prompt.length / 4
       };
@@ -182,7 +196,7 @@ export async function POST(req: Request) {
       overallComment: parsed.overallComment || "",
       improvementSuggestion: parsed.improvementSuggestion || "",
       confidence,
-      modelUsed: chosen,
+      modelUsed: chosenNormalized,
       escalated,
       rawTokensApprox: Math.round((prompt.length + JSON.stringify(parsed).length) / 4)
     };
