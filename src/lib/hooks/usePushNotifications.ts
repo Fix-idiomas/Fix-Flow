@@ -24,10 +24,20 @@ export function usePushNotifications() {
     (async () => {
       try {
         if (typeof window === "undefined") return;
-  const supported = await isSupported().catch(() => false);
-  const rawPerm = Notification.permission;
-  const swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js").catch(()=>undefined);
-  setDebugInfo({ supported, rawPerm, hasSw: !!swReg });
+        const supported = await isSupported().catch(() => false);
+        const rawPerm = Notification.permission;
+        let swReg: ServiceWorkerRegistration | undefined = undefined;
+        if ("serviceWorker" in navigator) {
+          swReg = (await navigator.serviceWorker.getRegistration().catch(()=>undefined)) || undefined;
+          if (!swReg) {
+            try { swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" }); } catch {}
+          }
+          try {
+            const ready = await navigator.serviceWorker.ready;
+            if (ready) swReg = ready;
+          } catch {}
+        }
+        setDebugInfo({ supported, rawPerm, hasSw: !!swReg });
         if (!supported) {
           if (alive) setState({ status: "denied", reason: "unsupported" });
           return;
@@ -43,9 +53,14 @@ export function usePushNotifications() {
           // Ensure SW registration before attempting to fetch token silently
           let swReg: ServiceWorkerRegistration | undefined = undefined;
           if ("serviceWorker" in navigator) {
-            swReg = (await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js"))
-              || (await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" }))
-              || undefined;
+            swReg = (await navigator.serviceWorker.getRegistration().catch(()=>undefined)) || undefined;
+            if (!swReg) {
+              try { swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" }); } catch {}
+            }
+            try {
+              const ready = await navigator.serviceWorker.ready;
+              if (ready) swReg = ready;
+            } catch {}
           }
           const messaging = getMessaging(app);
           const cached = typeof localStorage !== "undefined" ? localStorage.getItem("ff_push_token") || "" : "";

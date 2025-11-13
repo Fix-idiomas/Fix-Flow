@@ -47,12 +47,19 @@ export async function requestAndRegisterPush(): Promise<
     // Ensure a service worker is registered for FCM (required for tokens and background messages)
     let swReg: ServiceWorkerRegistration | undefined = undefined;
     if ("serviceWorker" in navigator) {
-      swReg = (await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js"))
-        || (await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" }))
-        || undefined;
+      // Prefer an existing registration; otherwise register and then await readiness
+      swReg = (await navigator.serviceWorker.getRegistration().catch(()=>undefined)) || undefined;
+      if (!swReg) {
+        try { swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" }); } catch {}
+      }
+      // Wait for an active/ready registration for reliability on first install
+      try {
+        const ready = await navigator.serviceWorker.ready;
+        if (ready) swReg = ready;
+      } catch {}
     }
     const messaging = getMessaging(app);
-    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg }).catch(() => "");
+  const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg }).catch(() => "");
     if (!token) return { ok: false, reason: "token_failed" };
 
     // Best-effort: initialize Flow user on server (idempotent)
