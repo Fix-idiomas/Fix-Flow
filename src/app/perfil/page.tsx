@@ -176,10 +176,14 @@ export default function PerfilPage() {
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
           ...(uid ? { "x-firebase-uid": uid } : {}),
         },
-        body: JSON.stringify({}),
+        // Prefer enviar para ESTE dispositivo (se tivermos o token em memória)
+        body: JSON.stringify({ token: pushState.token || undefined }),
       });
       const j = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(j?.error || `server_${res.status}`);
+      if (!res.ok) {
+        const msg = j?.message || j?.error || `server_${res.status}`;
+        throw new Error(msg);
+      }
       setTestResult("Enviado! Verifique a notificação.");
     } catch (e: any) {
       setTestResult(`Falha ao enviar: ${e?.message || "erro"}`);

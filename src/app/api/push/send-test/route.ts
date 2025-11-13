@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       body: string;
       link: string;
     }>;
-    let token: string | undefined = typeof body.token === "string" ? body.token : undefined;
+  let token: string | undefined = typeof body.token === "string" ? body.token : undefined;
     const title = typeof body.title === "string" && body.title ? body.title : "Fix Flow — teste";
     const notifBody = typeof body.body === "string" && body.body ? body.body : "Notificação de teste";
     const link = typeof body.link === "string" && body.link ? body.link : process.env.NEXT_PUBLIC_SITE_URL || "https://fix-flow-eight.vercel.app/";
@@ -73,8 +73,63 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, messageId });
   } catch (e: unknown) {
     let msg = "server_error";
-    if (e instanceof Error) msg = e.message;
-    else if (typeof e === "string") msg = e;
-    return NextResponse.json({ error: msg }, { status: 500 });
+    let code: string | undefined;
+    if (e && typeof e === "object") {
+      const anyE = e as { message?: string; code?: string };
+      msg = anyE.message || msg;
+      code = anyE.code;
+    } else if (typeof e === "string") {
+      msg = e;
+    }
+
+    // If token is invalid/unregistered, try to clean it up from DB to avoid future errors
+    const isUnregistered =
+      (code && /registration-token-not-registered|unregistered/i.test(code)) ||
+      /Requested entity was not found/i.test(msg);
+
+    try {
+      if (isUnregistered) {
+        const body = (await req.json().catch(() => ({}))) as Partial<{ token: string }>;
+        let badToken = body.token as string | undefined;
+        if (!badToken) {
+          // if we looked it up earlier, we still have variable 'token' in scope
+          // but not accessible here; re-acquire by finding the most recent token for this user
+          const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+          let firebaseUid: string | null = null;
+          if (authHeader && authHeader.startsWith("Bearer ")) {
+            const t = authHeader.slice("Bearer ".length).trim();
+            firebaseUid = await verifyFirebaseIdToken(t).catch(() => null);
+          }
+          if (!firebaseUid) firebaseUid = req.headers.get("x-firebase-uid");
+          if (firebaseUid) {
+            const supabase = getSupabase();
+            const { data: userRow } = await supabase
+              .from("users")
+              .select("id")
+              .eq("firebase_uid", firebaseUid)
+              .maybeSingle();
+            if (userRow) {
+              const { data: tokens } = await supabase
+                .from("push_tokens")
+                .select("token, created_at")
+                .eq("user_id", userRow.id)
+                .order("created_at", { ascending: false })
+                .limit(1);
+              const t0 = tokens && tokens[0]?.token;
+              badToken = typeof t0 === "string" ? t0 : undefined;
+            }
+          }
+        }
+        if (badToken) {
+          const supabase = getSupabase();
+          await supabase.from("push_tokens").delete().eq("token", badToken);
+        }
+      }
+    } catch {}
+
+    const payload = isUnregistered
+      ? { error: "token_unregistered", message: "O token de push não é mais válido. Clique em 'Ativar/Reativar' e tente novamente." }
+      : { error: msg };
+    return NextResponse.json(payload, { status: 500 });
   }
 }
