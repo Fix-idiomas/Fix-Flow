@@ -43,6 +43,39 @@ export default function PerfilPage() {
     })();
   }, []);
 
+  // Auto-sync: se já há permissão e token local, garante registro no backend
+  useEffect(() => {
+    (async () => {
+      try {
+        if (pushState.status !== "granted") return;
+        if (pushBackend?.hasToken) return;
+        if (!auth.currentUser) await signInAnonymously(auth);
+        const idToken = await auth.currentUser?.getIdToken().catch(()=>undefined);
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        await fetch("/api/push/register-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+            "x-firebase-uid": uid,
+          },
+          body: JSON.stringify({ token: pushState.token }),
+        });
+        const res = await fetch("/api/push/status", {
+          headers: {
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+            "x-firebase-uid": uid,
+          }
+        });
+        if (res.ok) {
+          const j = await res.json();
+          setPushBackend({ hasToken: j.hasToken, tokens: j.tokens || [] });
+        }
+      } catch {}
+    })();
+  }, [pushState.status]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {

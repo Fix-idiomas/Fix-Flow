@@ -13,9 +13,28 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients?.claim?.());
 });
 
-// Optional: handle push events if backend sends raw Web Push payloads
-self.addEventListener("push", () => {
-  // Intentionally empty for now.
+// Handle push events and show a notification (works for notification or data payloads)
+self.addEventListener("push", (event) => {
+  try {
+    const payload = event.data?.json?.() ?? {};
+    const notif = payload.notification || payload;
+    const title = notif.title || "Fix Flow";
+    const body = notif.body || "";
+    const link = (payload.webpush && payload.webpush.fcmOptions && payload.webpush.fcmOptions.link)
+      || (payload.fcmOptions && payload.fcmOptions.link)
+      || notif.click_action
+      || payload.link
+      || "/";
+
+    const options = {
+      body,
+      // icon: notif.icon || "/icons/icon-192.png", // add if you have an icon in public/
+      data: { link },
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (e) {
+    event.waitUntil(self.registration.showNotification("Fix Flow", { body: "" }));
+  }
 });
 
 // Optional: focus the client when a notification is clicked
