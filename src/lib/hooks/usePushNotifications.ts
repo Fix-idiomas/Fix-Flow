@@ -16,6 +16,7 @@ export type PushState =
 
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>({ status: "idle" });
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   // Initialize status on mount without prompting the browser
   useEffect(() => {
@@ -23,7 +24,10 @@ export function usePushNotifications() {
     (async () => {
       try {
         if (typeof window === "undefined") return;
-        const supported = await isSupported().catch(() => false);
+  const supported = await isSupported().catch(() => false);
+  const rawPerm = Notification.permission;
+  const swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js").catch(()=>undefined);
+  setDebugInfo({ supported, rawPerm, hasSw: !!swReg });
         if (!supported) {
           if (alive) setState({ status: "denied", reason: "unsupported" });
           return;

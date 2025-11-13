@@ -19,6 +19,27 @@ export default function PerfilPage() {
   const [avatarProgress, setAvatarProgress] = useState<number | null>(null);
   const [avatarTask, setAvatarTask] = useState<ReturnType<typeof uploadBytesResumable> | null>(null);
   const { state: pushState, request: requestPush } = usePushNotifications();
+  const [pushBackend, setPushBackend] = useState<null | { hasToken: boolean; tokens: string[] }>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        const idToken = await auth.currentUser?.getIdToken().catch(()=>undefined);
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        const res = await fetch("/api/push/status", {
+          headers: {
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+            "x-firebase-uid": uid,
+          }
+        });
+        if (res.ok) {
+          const j = await res.json();
+          setPushBackend({ hasToken: j.hasToken, tokens: j.tokens || [] });
+        }
+      } catch {}
+    })();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -185,6 +206,9 @@ export default function PerfilPage() {
         <section className="border rounded-lg p-4 bg-white">
           <h2 className="font-medium mb-3">Notificações</h2>
           <div className="text-sm">Status: <span className="font-medium">{pushState.status}</span></div>
+          {pushBackend && (
+            <div className="text-xs text-gray-500 mt-1">Backend: {pushBackend.hasToken ? `token registrado (${pushBackend.tokens.length})` : "sem token"}</div>
+          )}
           {pushState.status === "granted" && (
             <div className="text-xs text-gray-500 break-all mt-1">Token: {pushState.token}</div>
           )}
