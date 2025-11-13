@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { auth, storage } from "@/lib/firebase";
 import { signInAnonymously } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 
 type Profile = { id: string; firebaseUid: string; displayName: string | null; avatarUrl: string | null; onboardingCompleted: boolean };
@@ -14,6 +14,10 @@ export default function PerfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const [avatarProgress, setAvatarProgress] = useState<number | null>(null);
+  const [avatarTask, setAvatarTask] = useState<ReturnType<typeof uploadBytesResumable> | null>(null);
   const { state: pushState, request: requestPush } = usePushNotifications();
 
   useEffect(() => {
@@ -78,16 +82,61 @@ export default function PerfilPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      setSaving(true);
+      setAvatarUploadError(null);
+      setUploadingAvatar(true);
+      setAvatarProgress(0);
+      if (!/^image\//.test(file.type)) {
+        throw new Error("Tipo de arquivo inválido");
+      }
+      const MAX_MB = 5;
+      if (file.size > MAX_MB * 1024 * 1024) {
+        throw new Error(`Imagem maior que ${MAX_MB}MB`);
+      }
       if (!auth.currentUser) await signInAnonymously(auth);
       const path = `avatars/${auth.currentUser!.uid}/${Date.now()}_${file.name}`;
       const r = ref(storage, path);
-      await uploadBytes(r, file);
-      const url = await getDownloadURL(r);
+      let uploadedRef = null as null | ReturnType<typeof ref>;
+      try {
+        const task = uploadBytesResumable(r, file, { contentType: file.type });
+        setAvatarTask(task);
+        await new Promise<void>((resolve, reject) => {
+          task.on("state_changed", (snap) => {
+            if (snap.totalBytes) {
+              setAvatarProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
+            }
+          }, (err) => reject(err), () => resolve());
+        });
+        uploadedRef = task.snapshot.ref as any;
+      } catch (err: any) {
+        console.warn("Resumable upload falhou, tentando fallback simples", err);
+        if (err?.code === 'storage/canceled') throw err; // não tentar fallback se usuário cancelou
+        // Fallback para uploadBytes (menos headers CORS)
+        await uploadBytes(r, file, { contentType: file.type } as any);
+        uploadedRef = r as any;
+      }
+      const url = await getDownloadURL(uploadedRef! as any);
       setAvatarUrl(url);
+    } catch (err: any) {
+      const code = err?.code || "";
+      let friendly = err?.message || "Falha no upload. Tente novamente.";
+      if (code === 'storage/canceled') friendly = "Upload cancelado.";
+      // CORS típico: preflight 404/blocked => net::ERR_FAILED + tarefa vira canceled
+      if (/CORS|preflight/i.test(err?.message || "") || (code === 'storage/canceled' && avatarProgress === 0)) {
+        friendly += " Verifique CORS do bucket e domínio autorizado no Firebase (localhost:3000).";
+      }
+      setAvatarUploadError(friendly);
     } finally {
-      setSaving(false);
+      setUploadingAvatar(false);
+      setAvatarTask(null);
+      setAvatarProgress(null);
     }
+  }
+
+  function cancelUpload() {
+    try {
+      avatarTask?.cancel();
+      setAvatarUploadError("Upload cancelado");
+    } catch {}
   }
 
   const presets = useMemo(() => {
@@ -117,10 +166,13 @@ export default function PerfilPage() {
             <div className="h-16 w-16 rounded-full overflow-hidden border bg-slate-100">
               {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : null}
             </div>
-            <label className="px-3 py-2 rounded border cursor-pointer">Upload
-              <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+            <label className={`px-3 py-2 rounded border ${uploadingAvatar?"opacity-60 cursor-not-allowed":"cursor-pointer"}`}>
+              {uploadingAvatar ? (avatarProgress != null ? `Enviando ${avatarProgress}%` : "Enviando...") : "Upload"}
+              <input type="file" accept="image/*" className="hidden" onChange={onFile} disabled={uploadingAvatar} />
             </label>
+            {uploadingAvatar && <button type="button" onClick={cancelUpload} className="text-xs text-red-600 underline">Cancelar</button>}
           </div>
+          {avatarUploadError && <div className="text-sm text-red-600 mb-2">{avatarUploadError}</div>}
           <div className="grid grid-cols-6 gap-3">
             {presets.map((url) => (
               <button key={url} className={`aspect-square rounded overflow-hidden border ${avatarUrl===url?"ring-2 ring-blue-600":""}`} onClick={() => setAvatarUrl(url)}>
@@ -133,6 +185,15 @@ export default function PerfilPage() {
         <section className="border rounded-lg p-4 bg-white">
           <h2 className="font-medium mb-3">Notificações</h2>
           <div className="text-sm">Status: <span className="font-medium">{pushState.status}</span></div>
+          {pushState.status === "granted" && (
+            <div className="text-xs text-gray-500 break-all mt-1">Token: {pushState.token}</div>
+          )}
+          {pushState.status === "denied" && (
+            <div className="text-xs text-red-600 mt-1">Permissão negada: {pushState.reason}. Você pode reativar nas configurações do navegador.</div>
+          )}
+          {pushState.status === "error" && (
+            <div className="text-xs text-red-600 mt-1">Erro: {pushState.reason}</div>
+          )}
           <button className="mt-2 px-3 py-2 rounded bg-blue-600 text-white" onClick={requestPush}>Ativar/Reativar</button>
         </section>
 

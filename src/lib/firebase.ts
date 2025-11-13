@@ -14,7 +14,7 @@ const firebaseConfig = {
   storageBucket:
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
     (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-      ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
+      ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebasestorage.app`
       : undefined),
 };
 

@@ -13,6 +13,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const { state: pushState, request: requestPush } = usePushNotifications();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const LS_KEY_STEP = "ff_onb_step";
 
   useEffect(() => {
     let mounted = true;
@@ -23,14 +24,31 @@ export default function OnboardingPage() {
         }
         const idToken = await auth.currentUser?.getIdToken();
         if (idToken && mounted) {
-          // Pre-inicializa o usuário no backend (idempotente)
-          await fetch("/api/auth/init", {
+          // Pre-inicializa o usuário no backend (idempotente) e checa onboarding
+          const res = await fetch("/api/auth/init", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${idToken}`,
               "x-firebase-uid": auth.currentUser!.uid,
             },
           });
+          if (res.ok) {
+            const j = await res.json().catch(() => null);
+            const completed = Boolean(j?.user?.onboardingCompleted);
+            // Se já concluiu, ir direto para estudo
+            if (completed) {
+              window.location.replace("/estudo");
+              return;
+            }
+            // Prefill com dados já existentes
+            if (typeof j?.user?.displayName === "string") setDisplayName(j.user.displayName || "");
+            if (typeof j?.user?.avatarUrl === "string") setAvatarUrl(j.user.avatarUrl || null);
+          }
+        }
+        // Restaura passo salvo (apenas se não redirecionado)
+        if (mounted) {
+          const saved = Number(localStorage.getItem(LS_KEY_STEP) || "1");
+          if (saved >= 1 && saved <= 4) setStep(saved as Step);
         }
       } catch {}
     }
@@ -112,11 +130,18 @@ export default function OnboardingPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || `server_${res.status}`);
       }
+      // Limpa progresso local e segue para primeira experiência
+      try { localStorage.removeItem(LS_KEY_STEP); } catch {}
       window.location.href = "/estudo"; // primeira experiência
     } catch (e: any) {
       setError(e?.message || "Erro ao concluir");
     } finally { setSaving(false); }
   }
+
+  // Persiste o passo atual (simples) para evitar perder progresso no refresh
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY_STEP, String(step)); } catch {}
+  }, [step]);
 
   return (
     <div className="mx-auto max-w-3xl p-6">
@@ -165,7 +190,17 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div>
             <h2 className="text-lg font-medium mb-2">Notificações</h2>
-            <p className="text-sm text-gray-600 mb-4">Ative lembretes de estudo e avisos de progresso.</p>
+            <p className="text-sm text-gray-600 mb-3">Receba lembretes de estudo e avisos de progresso. Você pode mudar isso depois em Perfil.</p>
+            {/* Soft ask: explicação antes do prompt nativo */}
+            {pushState.status === "idle" && (
+              <div className="mb-4 rounded border bg-slate-50 p-3 text-sm text-slate-700">
+                Vamos pedir permissão do navegador para enviar notificações. Isso ajuda a manter a rotina.
+                <div className="mt-3 flex gap-2">
+                  <button className="px-3 py-2 rounded bg-blue-600 text-white" onClick={requestPush}>Ativar agora</button>
+                  <button className="px-3 py-2 rounded border" onClick={() => setStep(4)}>Pedir depois</button>
+                </div>
+              </div>
+            )}
             <PushCard state={pushState} onRequest={requestPush} />
             <div className="mt-4 flex gap-3">
               <button className="px-4 py-2 rounded bg-gray-100" onClick={() => setStep(2)}>Voltar</button>
@@ -229,6 +264,7 @@ function PushCard({ state, onRequest }: { state: ReturnType<typeof usePushNotifi
 function AvatarStep({ current, onSave, onSkip }: { current: string | null; onSave: (url: string | null) => void; onSkip: () => void }) {
   const [selected, setSelected] = useState<string | null>(current ?? null);
   const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const presets = useMemo(() => {
     const seeds = ["Alex", "Bianca", "Caio", "Duda", "Enzo", "Fabi", "Gabi", "Heitor"];
@@ -239,6 +275,7 @@ function AvatarStep({ current, onSave, onSkip }: { current: string | null; onSav
     const file = e.target.files?.[0];
     if (!file) return;
     try {
+      setUploadErr(null);
       setUploading(true);
       if (!auth.currentUser) await signInAnonymously(auth);
       const { storage } = await import("@/lib/firebase");
@@ -248,6 +285,8 @@ function AvatarStep({ current, onSave, onSkip }: { current: string | null; onSav
       await uploadBytes(r, file);
       const url = await getDownloadURL(r);
       setSelected(url);
+    } catch (err: any) {
+      setUploadErr(err?.message || "Falha no upload. Tente novamente.");
     } finally {
       setUploading(false);
     }
@@ -268,6 +307,7 @@ function AvatarStep({ current, onSave, onSkip }: { current: string | null; onSav
           <input type="file" accept="image/*" className="hidden" onChange={onFile} />
         </label>
       </div>
+      {uploadErr && <div className="mt-2 text-sm text-red-600">{uploadErr}</div>}
       <div className="mt-4 flex gap-3">
         <button className="px-4 py-2 rounded bg-gray-100" onClick={onSkip}>Pular</button>
         <button disabled={uploading} className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50" onClick={() => onSave(selected ?? null)}>
