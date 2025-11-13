@@ -83,6 +83,11 @@ npm run build
 npm start
 ```
 
+## Banco de dados (Supabase)
+
+- Esquema atual, introspecção e migrações sugeridas: veja `docs/db/README.md`.
+- Consultas úteis de descoberta (somente leitura): `docs/db/discovery.sql`.
+
 ## Variáveis de ambiente
 Firebase:
 - NEXT_PUBLIC_FIREBASE_API_KEY

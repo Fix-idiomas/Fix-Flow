@@ -74,13 +74,40 @@ export async function POST(req: Request) {
       firebaseUid: row.firebase_uid,
       displayName: row.display_name ?? null,
       avatarUrl: row.avatar_url ?? null,
+      fullName: row.full_name ?? null,
+      email: row.email ?? null,
       pushOptIn: Boolean(row.push_opt_in ?? false),
       legacyLinked: Boolean(row.legacy_linked ?? false),
       onboardingCompleted: Boolean(row.onboarding_completed ?? false),
       status: (row.status as string) ?? "active",
     };
 
-    return NextResponse.json({ ok: true, user }, { status: 200 });
+    // Best-effort fetch of private PII if table exists
+    let priv: any = null;
+    try {
+      const { data: pvt, error: pvtErr } = await supabase
+        .from("user_private")
+        .select("cpf, phone_e164, address_street, address_number, address_complement, address_neighborhood, address_city, address_state, address_cep")
+        .eq("uid", firebaseUid)
+        .maybeSingle();
+      if (!pvtErr && pvt) {
+        priv = {
+          hasCpf: Boolean(pvt.cpf),
+          cpf: pvt.cpf ?? null,
+          phone: pvt.phone_e164 ?? null,
+          street: pvt.address_street ?? null,
+          number: pvt.address_number ?? null,
+          complement: pvt.address_complement ?? null,
+          neighborhood: pvt.address_neighborhood ?? null,
+          city: pvt.address_city ?? null,
+          state: pvt.address_state ?? null,
+          cep: pvt.address_cep ?? null,
+        };
+      }
+      // If relation missing, ignore silently
+    } catch {}
+
+    return NextResponse.json({ ok: true, user, ...(priv ? { private: priv } : {}) }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || "server_error" }, { status: 500 });
   }

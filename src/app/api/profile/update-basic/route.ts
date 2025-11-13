@@ -79,6 +79,8 @@ export async function POST(req: Request) {
       firebaseUid: userRow.firebase_uid,
       displayName: userRow.display_name,
       avatarUrl: userRow.avatar_url ?? null,
+      fullName: userRow.full_name ?? null,
+      email: userRow.email ?? null,
       onboardingCompleted: Boolean(userRow.onboarding_completed ?? false),
     };
     return NextResponse.json({ ok: true, user });
