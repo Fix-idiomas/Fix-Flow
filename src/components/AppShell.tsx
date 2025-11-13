@@ -92,15 +92,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="leading-tight">
             <div className="text-sm font-semibold">Fix Flow - Sua jornada de estudos</div>
           </div>
-          <button
-            type="button"
+          <Link
+            href="/perfil"
             aria-label="Perfil"
             title="Perfil"
             className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
           >
             <span className="hidden lg:inline text-slate-700">Perfil</span>
             <div className="h-6 w-6 rounded-full bg-slate-200" />
-          </button>
+          </Link>
         </div>
       </header>
 
