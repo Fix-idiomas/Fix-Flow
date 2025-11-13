@@ -169,6 +169,7 @@ export default function PerfilPage() {
       if (!auth.currentUser) await signInAnonymously(auth);
       const idToken = await auth.currentUser?.getIdToken().catch(()=>undefined);
       const uid = auth.currentUser?.uid;
+      const currentToken = pushState.status === "granted" ? pushState.token : undefined;
       const res = await fetch("/api/push/send-test", {
         method: "POST",
         headers: {
@@ -177,7 +178,7 @@ export default function PerfilPage() {
           ...(uid ? { "x-firebase-uid": uid } : {}),
         },
         // Prefer enviar para ESTE dispositivo (se tivermos o token em memória)
-        body: JSON.stringify({ token: pushState.token || undefined }),
+        body: JSON.stringify({ token: currentToken }),
       });
       const j = await res.json().catch(()=>({}));
       if (!res.ok) {
