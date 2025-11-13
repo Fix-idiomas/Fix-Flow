@@ -17,3 +17,17 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("push", () => {
   // Intentionally empty for now.
 });
+
+// Optional: focus the client when a notification is clicked
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification?.data?.link || event.notification?.data?.url;
+  event.waitUntil((async () => {
+    if (urlToOpen) {
+      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const matching = allClients.find((c) => c.url.includes(urlToOpen));
+      if (matching) return matching.focus();
+      return self.clients.openWindow(urlToOpen);
+    }
+  })());
+});

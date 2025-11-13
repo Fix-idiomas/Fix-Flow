@@ -19,6 +19,8 @@ export default function PerfilPage() {
   const [avatarProgress, setAvatarProgress] = useState<number | null>(null);
   const [avatarTask, setAvatarTask] = useState<ReturnType<typeof uploadBytesResumable> | null>(null);
   const { state: pushState, request: requestPush, debug: pushDebug } = usePushNotifications();
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
   const [pushBackend, setPushBackend] = useState<null | { hasToken: boolean; tokens: string[] }>(null);
   useEffect(() => {
     (async () => {
@@ -160,6 +162,32 @@ export default function PerfilPage() {
     } catch {}
   }
 
+  async function sendTestPush() {
+    setSendingTest(true);
+    setTestResult(null);
+    try {
+      if (!auth.currentUser) await signInAnonymously(auth);
+      const idToken = await auth.currentUser?.getIdToken().catch(()=>undefined);
+      const uid = auth.currentUser?.uid;
+      const res = await fetch("/api/push/send-test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          ...(uid ? { "x-firebase-uid": uid } : {}),
+        },
+        body: JSON.stringify({}),
+      });
+      const j = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(j?.error || `server_${res.status}`);
+      setTestResult("Enviado! Verifique a notificação.");
+    } catch (e: any) {
+      setTestResult(`Falha ao enviar: ${e?.message || "erro"}`);
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
   const presets = useMemo(() => {
     const seeds = ["Alex", "Bianca", "Caio", "Duda", "Enzo", "Fabi", "Gabi", "Heitor"];
     return seeds.map((s) => `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${encodeURIComponent(s)}`);
@@ -221,7 +249,15 @@ export default function PerfilPage() {
           {pushState.status === "error" && (
             <div className="text-xs text-red-600 mt-1">Erro: {pushState.reason}</div>
           )}
-          <button className="mt-2 px-3 py-2 rounded bg-blue-600 text-white" onClick={requestPush}>Ativar/Reativar</button>
+          <div className="flex gap-2 mt-2">
+            <button className="px-3 py-2 rounded bg-blue-600 text-white" onClick={requestPush}>Ativar/Reativar</button>
+            <button disabled={sendingTest || pushState.status !== "granted"} className="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-50" onClick={sendTestPush}>{sendingTest?"Enviando…":"Enviar push de teste"}</button>
+          </div>
+          {testResult && (
+            <div className={`text-xs mt-2 ${testResult.startsWith('Falha') ? 'text-red-600' : 'text-gray-600'}`}>
+              {testResult}
+            </div>
+          )}
         </section>
 
         <div className="flex gap-3">
