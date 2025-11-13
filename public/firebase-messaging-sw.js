@@ -31,8 +31,10 @@ self.addEventListener("push", (event) => {
       // icon: notif.icon || "/icons/icon-192.png", // add if you have an icon in public/
       data: { link },
     };
+    console.log("[SW] push received", { title, body, raw: payload });
     event.waitUntil(self.registration.showNotification(title, options));
   } catch (e) {
+    console.warn("[SW] push handler error", e);
     event.waitUntil(self.registration.showNotification("Fix Flow", { body: "" }));
   }
 });

@@ -36,6 +36,8 @@ export function usePushNotifications() {
             const ready = await navigator.serviceWorker.ready;
             if (ready) swReg = ready;
           } catch {}
+          // Força verificação de atualização do SW (evita ficar com handler antigo que engole push no mobile)
+          try { swReg?.update(); } catch {}
         }
         setDebugInfo({ supported, rawPerm, hasSw: !!swReg });
         if (!supported) {
@@ -61,6 +63,7 @@ export function usePushNotifications() {
               const ready = await navigator.serviceWorker.ready;
               if (ready) swReg = ready;
             } catch {}
+            try { swReg?.update(); } catch {}
           }
           const messaging = getMessaging(app);
           const cached = typeof localStorage !== "undefined" ? localStorage.getItem("ff_push_token") || "" : "";
