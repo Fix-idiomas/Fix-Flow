@@ -85,5 +85,5 @@ export function usePushNotifications() {
     }
   }, []);
 
-  return { state, request };
+  return { state, request, debug: debugInfo };
 }
