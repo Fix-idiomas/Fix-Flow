@@ -187,3 +187,24 @@ create index if not exists push_tokens_user_id_idx on public.push_tokens (user_i
 ---
 
 Para inspeção manual detalhada, veja também `docs/db/discovery.sql` (consultas somente leitura para tabelas, colunas, índices, RLS e policies).
+
+Resumo do que foi commitado
+
+APIs
+auth/init: retorna cpf (sem máscara), phone e endereço completo de user_private; mantém fullName/email de users.
+profile/update-sensitive: salva e devolve cpf/phone/endereço completos; remove máscara; inclui mais campos no select de retorno.
+profile/update-basic: resposta inclui fullName e email para consistência.
+db/introspect (novo): rota de introspecção read-only de tabelas/colunas.
+UI
+perfil/page.tsx: reidrata telefone, CPF e endereço após refresh; valida e envia CPF bruto; hidrata fullName e email.
+Docs
+docs/db/README.md: estado do schema, introspecção, RLS recomendada e estratégias para correção de CPF.
+docs/db/policies.user_private.sql: script RLS owner-only completo e opções (janela de correção, verificação).
+docs/db/discovery.sql: expandido com consultas úteis.
+Qualidade
+
+Build/Typecheck: PASS
+Lint: PASS
+Deploy
+
+O push foi feito no branch main; seu provedor (p.ex. Vercel) deve iniciar o build automaticamente. Se quiser, posso acompanhar logs e validar um smoke test quando estiver no ar.
