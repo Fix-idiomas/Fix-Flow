@@ -35,9 +35,9 @@ export default function OnboardingPage() {
           if (res.ok) {
             const j = await res.json().catch(() => null);
             const completed = Boolean(j?.user?.onboardingCompleted);
-            // Se já concluiu, ir direto para estudo
+            // Se já concluiu, ir direto para a home
             if (completed) {
-              window.location.replace("/estudo");
+              window.location.replace("/");
               return;
             }
             // Prefill com dados já existentes
@@ -130,9 +130,9 @@ export default function OnboardingPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || `server_${res.status}`);
       }
-      // Limpa progresso local e segue para primeira experiência
+      // Limpa progresso local e segue para a home
       try { localStorage.removeItem(LS_KEY_STEP); } catch {}
-      window.location.href = "/estudo"; // primeira experiência
+      window.location.href = "/"; // home
     } catch (e: any) {
       setError(e?.message || "Erro ao concluir");
     } finally { setSaving(false); }
