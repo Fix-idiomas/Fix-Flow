@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff,
+  Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff, BookOpen,
 } from "lucide-react";
 import { Timer } from "lucide-react";
 import { AccountLinker } from "./auth/AccountLinker";
@@ -19,6 +19,7 @@ type Item = {
 
 const NAV: Item[] = [
   { href: "/", label: "Início", Icon: Home },
+  { href: "/curso", label: "Cursos", Icon: BookOpen },
   { href: "/leaderboard", label: "Leaderboard", Icon: BarChart3 },
   { href: "/comunidade", label: "Comunidade", Icon: Users },
   { href: "/tarefas", label: "Tarefas", Icon: ListChecks },
