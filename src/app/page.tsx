@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CalendarCheck, Sparkles, ChevronRight, BarChart3 } from "lucide-react";
+import { CalendarCheck, Sparkles, ChevronRight, BarChart3, BookOpen } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import {
@@ -232,6 +232,24 @@ export default function Home() {
             </p>
             <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700">
               Abrir <ChevronRight size={16} />
+            </div>
+          </Link>
+          {/* Card — Curso: Direct Principle */}
+          <Link
+            href="/curso/direct-principle"
+            className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white transition group-hover:scale-105">
+                <BookOpen size={20} />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Curso: Direct Principle</h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              Primeira trilha do método Direct Principle. Comece pela base e evolua com prática guiada.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-700">
+              Explorar <ChevronRight size={16} />
             </div>
           </Link>
         </section>

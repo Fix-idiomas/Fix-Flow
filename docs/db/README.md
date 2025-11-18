@@ -49,6 +49,7 @@ Ausentes (para dados pessoais): `full_name`, `email`.
 ## Rotas úteis de introspecção (read-only)
 
 - `GET /api/db/introspect` — verifica existência de tabelas e colunas relevantes (não altera schema).
+- `GET /api/db/check-indexes` — verifica índices/constraints úteis (não altera schema). Se a função RPC estiver ausente, retorna o SQL para criá-la.
 
 Exemplo de resposta (resumo):
 ```json
@@ -61,6 +62,18 @@ Exemplo de resposta (resumo):
   }
 }
 ```
+
+### Verificação de índices/constraints
+
+1) Abra `GET /api/db/check-indexes` no navegador. Se vier `requiresSetup: true`, copie o SQL retornado e rode no Supabase SQL Editor para criar a função `public.db_check_indexes()`.
+
+2) Recarregue `GET /api/db/check-indexes`. O retorno indicará, por booleanos, se os índices/constraints existem:
+- `users_firebase_uid_unique`
+- `users_email_unique` (opcional)
+- `push_tokens_token_unique`
+- `push_tokens_user_id_fk`
+
+3) Se algo estiver ausente ou duplicado, aplique o script idempotente em `docs/db/fixes.indexes.sql` no Supabase SQL Editor.
 
 ## Impacto na aplicação
 

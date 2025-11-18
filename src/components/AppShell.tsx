@@ -8,6 +8,7 @@ import {
   Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff,
 } from "lucide-react";
 import { Timer } from "lucide-react";
+import { AccountLinker } from "./auth/AccountLinker";
 
 
 type Item = {
@@ -115,7 +116,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar (rail no desktop; expande no hover) */}
       <aside
-        className={`${asideBase} ${asideDesktopWidth} ${asideSlide} group`}
+        className={`${asideBase} ${asideDesktopWidth} ${asideSlide} group flex flex-col`}
       >
         {/* Cabeçalho */}
         <div className="flex items-center justify-between gap-2 border-b px-3 py-3">
@@ -202,6 +203,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </ul>
         </nav>
+
+        {/* Account promotion for anonymous users */}
+        <div className="mt-auto px-2 pb-3">
+          <AccountLinker />
+        </div>
       </aside>
 
       {/* Conteúdo — compensa a largura do rail (16) ou expandido (64) */}
