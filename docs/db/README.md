@@ -30,6 +30,14 @@ Observação: a tabela `user_private` (CPF/telefone/endereço) pode estar presen
 
 Ausentes (para dados pessoais): `full_name`, `email`.
 
+### Vínculo Auth→DB (promoção de anônimo)
+
+- Chave canônica: `users.firebase_uid` (único). Este campo referencia o UID do Firebase Auth e é o elo entre autenticação e o banco principal.
+- Promoção de conta: o endpoint `POST /api/auth/promote` (no app) verifica o ID token via Firebase Admin, faz upsert em `public.users` por `firebase_uid` e atualiza `display_name`, `avatar_url` e, quando possível, `email`.
+- Índices/constraints: garanta `users_firebase_uid_unique` e, opcionalmente, `users_email_unique` em `lower(email)` (quando `email` existir). Use `GET /api/db/check-indexes` para validar rapidamente.
+- RLS: endpoints de servidor usam a Service Role (bypass RLS). Acesso direto via cliente deve permanecer restrito; usuários não devem escrever em `public.users` diretamente com a chave `anon`/`authenticated`.
+- Magic Link e preservação de UID: quando o link é concluído no mesmo dispositivo do login anônimo, usamos `linkWithCredential` para manter o `firebase_uid` e preservar progresso. Em outro dispositivo, pode ocorrer `signInWithEmailLink` e gerar um novo UID — por isso há avisos na UI para finalizar no mesmo dispositivo.
+
 ## push_tokens — colunas atuais
 
 | column_name | data_type                | nullable | default                               |
@@ -74,6 +82,13 @@ Exemplo de resposta (resumo):
 - `push_tokens_user_id_fk`
 
 3) Se algo estiver ausente ou duplicado, aplique o script idempotente em `docs/db/fixes.indexes.sql` no Supabase SQL Editor.
+
+SQL da função de checagem:
+- `docs/db/check-indexes.sql` define `public.db_check_indexes()` que retorna JSON com indicadores:
+  - `users_firebase_uid_unique`
+  - `users_email_unique`
+  - `push_tokens_token_unique`
+  - `push_tokens_user_id_fk`
 
 ## Impacto na aplicação
 
