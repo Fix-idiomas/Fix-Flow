@@ -27,6 +27,60 @@ export default function CursosIndexPage() {
               </Link>
             </div>
           </article>
+
+          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="mb-2 text-slate-900 font-semibold">Pronúncia Essencial</div>
+            <p className="text-sm text-slate-600">
+              Treino focado em fonética prática e repetição inteligente.
+            </p>
+            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
+              Em breve
+            </div>
+            <div className="mt-4">
+              <button
+                disabled
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 cursor-not-allowed"
+              >
+                Indisponível
+              </button>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="mb-2 text-slate-900 font-semibold">Listening Intensivo</div>
+            <p className="text-sm text-slate-600">
+              Imersão em compreensão auditiva com clipes curtos e objetivos.
+            </p>
+            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
+              Em breve
+            </div>
+            <div className="mt-4">
+              <button
+                disabled
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 cursor-not-allowed"
+              >
+                Indisponível
+              </button>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="mb-2 text-slate-900 font-semibold">Vocabulário Ativo</div>
+            <p className="text-sm text-slate-600">
+              Palavras em uso real com recall ativo e aplicação imediata.
+            </p>
+            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
+              Em breve
+            </div>
+            <div className="mt-4">
+              <button
+                disabled
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 cursor-not-allowed"
+              >
+                Indisponível
+              </button>
+            </div>
+          </article>
         </section>
       </div>
     </main>
