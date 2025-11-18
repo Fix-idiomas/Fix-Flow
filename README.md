@@ -12,6 +12,26 @@ Fix Flow — Projeto e arquitetura
 - Dados principais: Supabase (Postgres) — fonte de verdade do Flow
 - Dados legados: Supabase (outro projeto) — acesso read-only via views/usuário restrito
 
+## Autenticação e Contas (estado atual)
+- Mantemos o Firebase Auth para autenticação (anônima, Google e Magic Link).
+- O banco principal é o Supabase. Os usuários são consolidados em `public.users` e vinculados por `users.firebase_uid`.
+- Meta: permitir que o usuário anônimo preserve o progresso ao “promover” a conta, mantendo o mesmo `firebase_uid` e passando a funcionar em qualquer dispositivo.
+
+Fluxos implementados:
+- Anônimo: login automático ao abrir o app (Firebase Auth anônimo). Aparece um call-to-action para promover a conta.
+- Google: `linkWithPopup` (se anônimo) ou `signInWithPopup` + chamada a `POST /api/auth/promote` para sincronizar/atualizar o usuário no Supabase.
+- Magic Link: `sendSignInLinkToEmail` e página de conclusão em `/auth/complete-link`.
+	- Se aberto no mesmo dispositivo: usamos `linkWithCredential` para manter o UID. Caso contrário, fazemos `signInWithEmailLink` (pode gerar outro UID, por isso incentivamos finalizar no mesmo dispositivo para preservar progresso).
+
+Endpoint de promoção (server):
+- `POST /api/auth/promote`
+	- Verifica o ID token do Firebase (Admin SDK), upsert em `public.users` usando `firebase_uid`, e atualiza `display_name`, `avatar_url` e, quando possível, `email`.
+	- Usa a chave Service Role do Supabase (bypass RLS) apenas no servidor.
+
+Pós-login/promoção:
+- Após Google ou Magic Link, redirecionamos para `/`.
+- A home exibe um card para “Curso: Direct Principle” em `/curso/direct-principle` como primeiro ponto de entrada.
+
 ## Objetivos do Produto & MVP
 
 ### Problema que resolvemos
@@ -83,10 +103,30 @@ npm run build
 npm start
 ```
 
+## Rotas e Endpoints relevantes
+- Páginas
+	- `/` — Home (cards de entrada, incluindo “Direct Principle”).
+	- `/curso/direct-principle` — Página inicial da trilha Direct Principle.
+	- `/auth/complete-link` — Conclusão do Magic Link (linka UID anônimo quando possível).
+- API (App Router)
+	- `POST /api/auth/promote` — Valida token Firebase e sincroniza/atualiza usuário em `public.users` (via Service Role).
+	- `GET /api/db/check-indexes` — Verifica integridade de índices/constraints essenciais; retorna JSON.
+	- (Existente) `GET /api/db/introspect` — Leitura de esquema/colunas (read-only) para diagnóstico.
+
 ## Banco de dados (Supabase)
 
 - Esquema atual, introspecção e migrações sugeridas: veja `docs/db/README.md`.
 - Consultas úteis de descoberta (somente leitura): `docs/db/discovery.sql`.
+
+### Índices e constraints indispensáveis
+- Validação rápida via endpoint: `GET /api/db/check-indexes` → deve retornar algo como:
+	```json
+	{ "ok": true, "indexes": { "users_firebase_uid_unique": true, "users_email_unique": true, "push_tokens_token_unique": true, "push_tokens_user_id_fk": true }}
+	```
+- Caso o RPC helper não exista no banco, o endpoint retorna o SQL para criar a função.
+- SQLs disponíveis:
+	- `docs/db/check-indexes.sql` — Função `public.db_check_indexes()` (estável e apenas leitura)
+	- `docs/db/fixes.indexes.sql` — Correções idempotentes (unique em `users.firebase_uid`, unique opcional em `lower(users.email)`, FK em `push_tokens.user_id`)
 
 ## Variáveis de ambiente
 Firebase:
@@ -97,6 +137,12 @@ Firebase:
 - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 - NEXT_PUBLIC_FIREBASE_APP_ID
 - NEXT_PUBLIC_APP_ID
+
+Firebase (Admin — servidor):
+- FIREBASE_PROJECT_ID
+- FIREBASE_CLIENT_EMAIL
+- FIREBASE_PRIVATE_KEY  
+	Observação: cuide da quebra de linhas/escapes no Vercel; usar `-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n`.
 
 Supabase (projeto do Flow):
 - NEXT_PUBLIC_SUPABASE_URL
@@ -116,11 +162,16 @@ Gemini (IA):
 1) Conectar o repositório ao Vercel.  
 2) Em Project Settings → Environment Variables (Production/Preview):
 	- Firebase: NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, NEXT_PUBLIC_FIREBASE_APP_ID, NEXT_PUBLIC_APP_ID
+	- Firebase Admin (Server): FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
 	- Supabase (Flow): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (apenas Server)
 	- (Opcional) Legado: LEGACY_DB_URL ou credenciais read-only
 3) Deploy automático na `main`.
 4) Health check (server): acessar `/api/health` → `{ ok: true }`.
 	- Observação: este endpoint valida apenas o ambiente serverless. Para testar conexão/regras do Firebase no cliente, use os helpers `tryWriteHealthPing`/`tryReadHealthPing`.
+
+Autorização de domínios (Firebase Auth):
+- Adicione `localhost` e seu domínio de produção para Google e Magic Link.
+- Magic Link usa `actionCodeSettings` com `url` apontando para `/auth/complete-link` e `handleCodeInApp: true`.
 
 Observação Next: se houver aviso de múltiplos lockfiles, remova o lockfile fora da pasta do projeto ou configure `outputFileTracingRoot`.
 
