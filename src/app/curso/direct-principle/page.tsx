@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronRight, Target, BookOpenCheck, Layers } from 'lucide-react';
+import { microconceitos } from './micro';
 
 export default function DirectPrinciplePage() {
   return (
@@ -66,21 +67,23 @@ export default function DirectPrinciplePage() {
         </section>
 
         <section id="praticas" className="mt-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="mb-1 text-slate-900 font-semibold">Aquecimento — Expressão</div>
-            <p className="text-sm text-slate-600">Frases curtas para colocar a fala em movimento.</p>
-            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
-              Em breve
-            </div>
-          </div>
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          {microconceitos.map(mc => (
+            <a key={mc.slug} href={`/curso/direct-principle/${mc.slug}`} className="rounded-2xl border bg-white p-5 shadow-sm hover:border-slate-300">
+              <div className="mb-1 text-slate-900 font-semibold">{mc.title}</div>
+              <p className="text-sm text-slate-600">{mc.goal}</p>
+              <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-1 rounded">
+                Disponível
+              </div>
+            </a>
+          ))}
+          <div className="rounded-2xl border bg-white p-5 shadow-sm opacity-70">
             <div className="mb-1 text-slate-900 font-semibold">Listening — Objetivo 01</div>
             <p className="text-sm text-slate-600">Clipes curtos com foco em compreensão e repetição.</p>
             <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
               Em breve
             </div>
           </div>
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border bg-white p-5 shadow-sm opacity-70">
             <div className="mb-1 text-slate-900 font-semibold">Vocabulário — Em Ação</div>
             <p className="text-sm text-slate-600">Palavras úteis aplicadas em situações reais.</p>
             <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-1 rounded">
