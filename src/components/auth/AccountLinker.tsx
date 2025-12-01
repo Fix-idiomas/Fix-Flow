@@ -60,7 +60,16 @@ export const AccountLinker: React.FC = () => {
         router.push('/');
       }, 700);
     } catch (e: any) {
-      setError(e?.message || 'Falha ao conectar com Google');
+      const code = e?.code as string | undefined;
+      if (code === 'auth/credential-already-in-use') {
+        setError('Esta conta Google já está vinculada a outro usuário. Use a tela de login para entrar com ela neste dispositivo.');
+      } else if (code === 'auth/popup-closed-by-user') {
+        setError('Janela fechada antes de concluir o login.');
+      } else if (code === 'auth/cancelled-popup-request') {
+        setError('Já existe uma janela de login em andamento. Tente novamente.');
+      } else {
+        setError(e?.message || 'Falha ao conectar com Google');
+      }
     } finally {
       setBusy(false);
     }
@@ -123,7 +132,18 @@ export const AccountLinker: React.FC = () => {
           </div>
         </div>
         {error && (
-          <div className="text-xs text-red-600">{error}</div>
+          <div className="text-xs text-red-600">
+            {error}{' '}
+            {error.includes('tela de login') && (
+              <button
+                type="button"
+                onClick={() => router.push('/login')}
+                className="underline text-blue-600 ml-1"
+              >
+                Ir para login
+              </button>
+            )}
+          </div>
         )}
         {info && (
           <div className="text-xs text-green-600">{info}</div>

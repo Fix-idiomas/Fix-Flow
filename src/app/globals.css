@@ -3,6 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Brand palette (derived from logo) */
+  /* Deep elegant red palette */
+  --brand: #b30832; /* primary brand red */
+  --brand-hover: #970428; /* slightly darker for hover */
 }
 
 @theme inline {
@@ -23,4 +27,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Utility class for brand button if needed outside Tailwind arbitrary colors */
+.btn-brand {
+  background-color: var(--brand);
+  color: #fff;
+  transition: background-color .15s ease;
+}
+.btn-brand:hover {
+  background-color: var(--brand-hover);
 }

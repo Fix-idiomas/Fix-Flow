@@ -2,13 +2,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff, BookOpen,
 } from "lucide-react";
 import { Timer } from "lucide-react";
 import { AccountLinker } from "./auth/AccountLinker";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 
 type Item = {
@@ -30,13 +32,36 @@ const NAV: Item[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
-  // mobile drawer
+  // All hooks must be called unconditionally
+  const [authReady, setAuthReady] = useState(false);
+  const [user, setUser] = useState<unknown | null>(null);
   const [openMobile, setOpenMobile] = useState(false);
-
-  // desktop: "pinned" define se a barra fica expandida sempre.
-  // quando NÃO está pinned, ela fica como rail (md:w-16) e EXPANDE no :hover.
   const [pinned, setPinned] = useState(false);
+
+  // Render only content for /login, but hooks are always called
+  const isLogin = pathname === "/login";
+
+  async function handleLogout() {
+    try {
+      await signOut(auth);
+      // Redireciono é feito pelo onAuthStateChanged quando user fica null
+    } catch (e) {
+      console.error("Erro ao sair:", e);
+    }
+  }
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+      if (!u) {
+        router.replace("/login");
+      }
+    });
+    return () => unsub();
+  }, [router]);
 
   useEffect(() => {
     const v = localStorage.getItem("sidebarPinned");
@@ -65,6 +90,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // padding do conteúdo: fixo para rail (md:pl-16) e para pinned (md:pl-64)
   const mainPadDesktop = pinned ? "md:pl-64" : "md:pl-16";
+
+  // Render logic
+  if (isLogin) {
+    return <div className="min-h-screen bg-slate-50 text-slate-800">{children}</div>;
+  }
+  if (!authReady) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
+  if (!user) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-800">
@@ -103,6 +139,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="hidden lg:inline text-slate-700">Perfil</span>
             <div className="h-6 w-6 rounded-full bg-slate-200" />
           </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-md border px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-gray-50"
+          >
+            Sair
+          </button>
         </div>
       </header>
 
