@@ -1,0 +1,5 @@
+[33m2ff985a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m recent changes
+[33mb764cce[m configure Google
+[33md4d3496[m feat(cursos): add 'Em breve' placeholders for upcoming tracks on /curso
+[33m11aa515[m feat(nav): add /curso to AppShell and scaffold courses index page
+[33mcb43c59[m feat(onboarding): redirect to home (/) after completion and when already completed

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { LayoutDashboard, Film, ListChecks, Library } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { APP_ID } from "@/config/app";
@@ -152,6 +154,38 @@ export default function AdminPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Painel Administrativo</h1>
           <p className="mt-1 text-sm text-slate-600">Métricas de uso (sem alterar o schema).</p>
         </header>
+
+        {/* Hub de atalhos admin */}
+        <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link href="/admin" className="rounded-2xl border bg-white p-5 shadow-sm hover:border-slate-300">
+            <div className="mb-2 inline-flex items-center gap-2 text-slate-900">
+              <LayoutDashboard size={18} />
+              <span className="font-semibold">Painel</span>
+            </div>
+            <p className="text-sm text-slate-600">Visão geral com métricas rápidas.</p>
+          </Link>
+          <Link href="/admin/videos" className="rounded-2xl border bg-white p-5 shadow-sm hover:border-slate-300">
+            <div className="mb-2 inline-flex items-center gap-2 text-slate-900">
+              <Film size={18} />
+              <span className="font-semibold">Biblioteca de Vídeos</span>
+            </div>
+            <p className="text-sm text-slate-600">Gerencie vídeos (YouTube e uploads) e reutilize nas aulas.</p>
+          </Link>
+          <Link href="/admin/micros" className="rounded-2xl border bg-white p-5 shadow-sm hover:border-slate-300">
+            <div className="mb-2 inline-flex items-center gap-2 text-slate-900">
+              <Library size={18} />
+              <span className="font-semibold">Biblioteca de Micros</span>
+            </div>
+            <p className="text-sm text-slate-600">Modelos de práticas reutilizáveis (goal, task, critérios).</p>
+          </Link>
+          <Link href="/admin/editorial" className="rounded-2xl border bg-white p-5 shadow-sm hover:border-slate-300">
+            <div className="mb-2 inline-flex items-center gap-2 text-slate-900">
+              <ListChecks size={18} />
+              <span className="font-semibold">Editorial</span>
+            </div>
+            <p className="text-sm text-slate-600">Crie cursos, módulos e micros e vincule conteúdo.</p>
+          </Link>
+        </section>
 
         <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card title="Usuários (Supabase)" value={sbTotals?.users ?? "—"} hint="Tabela public.users" />

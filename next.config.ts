@@ -5,6 +5,12 @@ import type { NextConfig } from "next";
 // Isso ajuda Vercel a incluir corretamente funções API como /api/ai/analyze.
 const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "i.ytimg.com" },
+      { protocol: "https", hostname: "img.youtube.com" },
+    ],
+  },
 };
 
 export default nextConfig;

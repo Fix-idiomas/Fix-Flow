@@ -1,6 +1,8 @@
 -- Fix-Flow Editorial Schema (Courses, Micros, Media, Roles)
 -- Idempotent DDL to bootstrap content management for admin/teacher
 
+begin;
+
 create extension if not exists "pgcrypto";
 
 -- Roles mapping (simple, flexible)
@@ -80,6 +82,23 @@ create index if not exists idx_modules_course on public.modules(course_id);
 create index if not exists idx_micros_module on public.micros(module_id);
 create index if not exists idx_ownership_entity on public.ownership(entity_type, entity_id);
 
+-- Student video progress tracking (optional, for telemetry)
+create table if not exists public.lesson_video_progress (
+  id bigserial primary key,
+  user_id uuid not null references public.users(id) on delete cascade,
+  slug text not null,
+  video_id text not null,
+  seconds_watched int not null default 0,
+  pct real not null default 0,
+  duration_sec int,
+  completed boolean not null default false,
+  bypassed boolean not null default false,
+  updated_at timestamptz not null default now(),
+  unique (user_id, slug)
+);
+create index if not exists idx_lvp_user on public.lesson_video_progress(user_id);
+create index if not exists idx_lvp_slug on public.lesson_video_progress(slug);
+
 -- RLS enable
 alter table public.roles        enable row level security;
 alter table public.user_roles   enable row level security;
@@ -125,3 +144,4 @@ alter table public.ownership    enable row level security;
 -- );
 
 -- Audit: use existing public.audit_events from ddl.flow.sql for write logging (handled in app layer).
+commit;

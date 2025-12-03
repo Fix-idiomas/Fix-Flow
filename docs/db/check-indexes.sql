@@ -1,3 +1,5 @@
+begin;
+
 -- Helper: create a stable function to inspect indexes/constraints via /api/db/check-indexes
 create or replace function public.db_check_indexes()
 returns json language sql stable as $$
@@ -19,3 +21,5 @@ $$;
 
 -- Example usage:
 -- select public.db_check_indexes();
+
+commit;

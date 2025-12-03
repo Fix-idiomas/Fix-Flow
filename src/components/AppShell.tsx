@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff, BookOpen,
+  Menu, X, Home, Users, Trophy, ListChecks, Store, BarChart3, Pin, PinOff, BookOpen, Shield, MessageSquare,
 } from "lucide-react";
 import { Timer } from "lucide-react";
 import { AccountLinker } from "./auth/AccountLinker";
@@ -28,6 +28,7 @@ const NAV: Item[] = [
   { href: "/conquistas", label: "Conquistas", Icon: Trophy },
   { href: "/loja", label: "Loja", Icon: Store },
   { href: "/estudo", label: "Estudo", Icon: Timer },
+  { href: "/feedback", label: "Feedback", Icon: MessageSquare },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<unknown | null>(null);
   const [openMobile, setOpenMobile] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [adminChecked, setAdminChecked] = useState(false);
 
   // Render only content for /login, but hooks are always called
   const isLogin = pathname === "/login";
@@ -53,11 +56,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setAuthReady(true);
       if (!u) {
+        setIsAdmin(false);
+        setAdminChecked(true);
         router.replace("/login");
+        return;
+      }
+      // fetch admin status
+      try {
+        const token = await u.getIdToken(true).catch(() => undefined);
+        const res = await fetch('/api/admin/is-admin', {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            'x-firebase-uid': u.uid,
+          },
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const j = await res.json();
+          setIsAdmin(Boolean(j?.isAdmin));
+        } else {
+          setIsAdmin(false);
+        }
+      } catch {
+        setIsAdmin(false);
+      } finally {
+        setAdminChecked(true);
       }
     });
     return () => unsub();
@@ -245,6 +272,81 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </li>
             ))}
+            {adminChecked && isAdmin && (
+              <li>
+                <Link
+                  href="/admin"
+                  onClick={() => setOpenMobile(false)}
+                  aria-current={isActive('/admin') ? 'page' : undefined}
+                  className={[
+                    'group/link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                    'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                    isActive('/admin') ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  ].join(' ')}
+                  title={!pinned ? 'Admin' : undefined}
+                >
+                  <Shield size={18} className={isActive('/admin') ? 'text-white' : 'text-slate-500 group-hover/link:text-slate-800'} />
+                  <span
+                    className={[
+                      'truncate transition-opacity duration-150',
+                      pinned ? 'opacity-100' : 'hidden md:inline md:opacity-0 md:group-hover:opacity-100'
+                    ].join(' ')}
+                  >
+                    Admin
+                  </span>
+                </Link>
+              </li>
+            )}
+            {adminChecked && isAdmin && (
+              <li>
+                <Link
+                  href="/admin/editorial"
+                  onClick={() => setOpenMobile(false)}
+                  aria-current={isActive('/admin/editorial') ? 'page' : undefined}
+                  className={[
+                    'group/link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                    'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                    isActive('/admin/editorial') ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  ].join(' ')}
+                  title={!pinned ? 'Editorial' : undefined}
+                >
+                  <ListChecks size={18} className={isActive('/admin/editorial') ? 'text-white' : 'text-slate-500 group-hover/link:text-slate-800'} />
+                  <span
+                    className={[
+                      'truncate transition-opacity duration-150',
+                      pinned ? 'opacity-100' : 'hidden md:inline md:opacity-0 md:group-hover:opacity-100'
+                    ].join(' ')}
+                  >
+                    Editorial
+                  </span>
+                </Link>
+              </li>
+            )}
+            {adminChecked && isAdmin && (
+              <li>
+                <Link
+                  href="/prof/activities"
+                  onClick={() => setOpenMobile(false)}
+                  aria-current={isActive('/prof/activities') ? 'page' : undefined}
+                  className={[
+                    'group/link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                    'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400',
+                    isActive('/prof/activities') ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                  ].join(' ')}
+                  title={!pinned ? 'Professor' : undefined}
+                >
+                  <Users size={18} className={isActive('/prof/activities') ? 'text-white' : 'text-slate-500 group-hover/link:text-slate-800'} />
+                  <span
+                    className={[
+                      'truncate transition-opacity duration-150',
+                      pinned ? 'opacity-100' : 'hidden md:inline md:opacity-0 md:group-hover:opacity-100'
+                    ].join(' ')}
+                  >
+                    Professor
+                  </span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

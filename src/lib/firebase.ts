@@ -25,4 +25,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// Expor auth para debugging no console em dev (não em produção)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  // @ts-ignore
+  window.__FF_AUTH__ = auth;
+}
+
 export { app, auth, db, storage };

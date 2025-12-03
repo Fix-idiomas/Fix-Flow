@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, Send } from 'lucide-react';
 import { getMicro } from '../micro';
+import VideoGate from '@/components/VideoGate';
+import { auth } from '@/lib/firebase';
 
 type AnalyzeResponse = {
   scores: Record<string, number>;
@@ -24,6 +26,8 @@ export default function MicroPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [practiceSent, setPracticeSent] = useState(false);
 
   if (!micro) {
     return (
@@ -40,6 +44,25 @@ export default function MicroPage() {
   }
 
   async function handleAnalyze() {
+    if (!micro) {
+      setError('Micro não carregado');
+      return;
+    }
+    if (!practiceSent && unlocked && micro.video) {
+      try {
+        const token = await auth.currentUser?.getIdToken().catch(() => undefined);
+        fetch('/api/track/video', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(auth.currentUser?.uid ? { 'x-firebase-uid': auth.currentUser.uid } : {}),
+          },
+          body: JSON.stringify({ slug: micro.slug, videoId: micro.video.videoId, event: 'practice_started' }),
+        }).catch(() => {});
+      } catch {}
+      setPracticeSent(true);
+    }
     setLoading(true);
     setError(null);
     setResult(null);
@@ -91,6 +114,19 @@ export default function MicroPage() {
           </div>
         </section>
 
+        {micro.video ? (
+          <section className="mt-6">
+            <VideoGate
+              slug={micro.slug}
+              videoId={micro.video.videoId}
+              requiredWatchPct={micro.video.requireFullWatch ? 1 : micro.video.requiredWatchPct}
+              allowBypass={!!micro.video.allowBypass && !micro.video.requireFullWatch}
+              requireFullWatch={!!micro.video.requireFullWatch}
+              onUnlock={() => setUnlocked(true)}
+            />
+          </section>
+        ) : null}
+
         <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
           <label className="text-sm font-semibold text-slate-900" htmlFor="submission">Sua resposta</label>
           <textarea
@@ -100,11 +136,32 @@ export default function MicroPage() {
             placeholder="Escreva aqui sua apresentação em inglês..."
             value={submission}
             onChange={(e) => setSubmission(e.target.value)}
+            disabled={!!micro.video && !unlocked}
+            onFocus={async () => {
+              if (!practiceSent && unlocked && micro?.video) {
+                try {
+                  const token = await auth.currentUser?.getIdToken().catch(() => undefined);
+                  fetch('/api/track/video', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      ...(auth.currentUser?.uid ? { 'x-firebase-uid': auth.currentUser.uid } : {}),
+                    },
+                    body: JSON.stringify({ slug: micro.slug, videoId: micro.video.videoId, event: 'practice_started' }),
+                  }).catch(() => {});
+                } catch {}
+                setPracticeSent(true);
+              }
+            }}
           />
           <div className="mt-3">
+            {micro.video && !unlocked ? (
+              <div className="mb-2 text-xs text-amber-700">Assista ao vídeo para liberar a prática.</div>
+            ) : null}
             <button
               onClick={handleAnalyze}
-              disabled={loading || submission.trim().length < 20}
+              disabled={loading || submission.trim().length < 20 || (!!micro.video && !unlocked)}
               className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {loading ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
